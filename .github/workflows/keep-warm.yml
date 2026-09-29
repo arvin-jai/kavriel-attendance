@@ -1,0 +1,19 @@
+# Free Render instances sleep after ~15 min idle. Ping /health every 10 minutes during
+# school hours (Mon–Sat, 06:30–18:00 Asia/Manila = 22:30–10:00 UTC) so the first
+# attendance of the day doesn't wait for a cold start. Outside those hours it sleeps,
+# which keeps usage inside the free instance-hour allowance.
+name: Keep API warm
+
+on:
+  schedule:
+    - cron: '*/10 22-23 * * 0-5' # 06:00–07:59 PHT, Mon–Sat
+    - cron: '*/10 0-9 * * 1-6' # 08:00–17:59 PHT, Mon–Sat
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    if: ${{ vars.API_HEALTH_URL != '' }}
+    steps:
+      - name: Ping health endpoint
+        run: curl --fail --silent --show-error --max-time 90 "${{ vars.API_HEALTH_URL }}"

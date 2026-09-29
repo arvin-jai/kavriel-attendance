@@ -5,5 +5,13 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src", "scripts", "test", "prisma", "prisma.config.ts", "tsup.config.ts", "vitest.config.ts"]
+  "include": [
+    "src",
+    "scripts",
+    "test",
+    "prisma",
+    "prisma.config.ts",
+    "tsup.config.ts",
+    "vitest.config.ts"
+  ]
 }

@@ -1,0 +1,42 @@
+# Nightly encrypted logical backup of the production database.
+# Requires: secret DIRECT_URL (Neon direct connection string) and secret AGE_PUBLIC_KEY
+# (age recipient; keep the private key offline). The dump contains personal data, so it is
+# encrypted before it ever leaves the runner. Restore: see docs/HANDOFF.md.
+name: Nightly database backup
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 02:00 Asia/Manila
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      AGE_PUBLIC_KEY: ${{ secrets.AGE_PUBLIC_KEY }}
+    steps:
+      - name: Skip when not configured
+        if: ${{ env.DIRECT_URL == '' || env.AGE_PUBLIC_KEY == '' }}
+        run: echo "Backup secrets not set; skipping." && exit 0
+      - name: Install PostgreSQL 17 client and age
+        if: ${{ env.DIRECT_URL != '' && env.AGE_PUBLIC_KEY != '' }}
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-common age
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+      - name: Dump and encrypt
+        if: ${{ env.DIRECT_URL != '' && env.AGE_PUBLIC_KEY != '' }}
+        run: |
+          set -o pipefail
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          /usr/lib/postgresql/17/bin/pg_dump --format=custom --no-owner "$DIRECT_URL" \
+            | age -r "$AGE_PUBLIC_KEY" > "kavriel-$STAMP.dump.age"
+          ls -lh kavriel-*.dump.age
+      - uses: actions/upload-artifact@v4
+        if: ${{ env.DIRECT_URL != '' && env.AGE_PUBLIC_KEY != '' }}
+        with:
+          name: db-backup
+          path: kavriel-*.dump.age
+          retention-days: 30

@@ -1,0 +1,36 @@
+# Render Blueprint for the Kavriel API (free web service, Singapore).
+# The database is external (Neon); set DATABASE_URL / DIRECT_URL in the Render dashboard.
+# Nothing here is Render-specific in the code: the same build/start commands run anywhere Node runs.
+services:
+  - type: web
+    name: kavriel-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci --include=dev && npm run build:backend
+    # Applies pending migrations (idempotent, advisory-locked), then starts the API.
+    startCommand: npm run start:prod -w @kavriel/backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL # Neon pooled URL (…-pooler…, sslmode=require)
+        sync: false
+      - key: DIRECT_URL # Neon direct URL, used by `prisma migrate deploy`
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: QR_SIGNING_SECRET
+        generateValue: true
+      - key: TEACHER_SIGNUP_CODE
+        sync: false
+      - key: SCHOOL_TIMEZONE
+        value: Asia/Manila
+      - key: CORS_ORIGIN # empty for mobile-only; add the admin web origin in Phase 3
+        value: ''

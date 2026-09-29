@@ -1,0 +1,30 @@
+# Manually triggered Android build on EAS (free tier has a monthly build quota).
+# Requires secret EXPO_TOKEN and a linked EAS project (`npx eas-cli init` once).
+name: Mobile build (EAS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        type: choice
+        options: [preview, production]
+        default: preview
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Build Android (${{ inputs.profile }})
+        working-directory: apps/mobile
+        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive --no-wait
