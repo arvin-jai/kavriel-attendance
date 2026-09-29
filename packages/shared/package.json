@@ -1,0 +1,18 @@
+{
+  "name": "@kavriel/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zod schemas, enums and API types shared by the mobile app, backend and future admin web",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}

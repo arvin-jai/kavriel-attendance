@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+.expo
+package-lock.json
+apps/backend/src/generated
+apps/backend/prisma/migrations

@@ -1,0 +1,34 @@
+{
+  "name": "kavriel-attendance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QR attendance for teachers and students: Expo mobile app + Express/Prisma/PostgreSQL API",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "db": "npm run db -w @kavriel/backend",
+    "db:stop": "npm run db:stop -w @kavriel/backend",
+    "dev:backend": "npm run dev -w @kavriel/backend",
+    "dev:mobile": "npm run start -w @kavriel/mobile",
+    "build:backend": "npm run build -w @kavriel/backend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript-eslint": "^8.71.0"
+  }
+}

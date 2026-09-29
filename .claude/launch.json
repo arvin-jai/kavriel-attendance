@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@kavriel/backend"],
+      "port": 4000
+    },
+    {
+      "name": "mobile-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web", "-w", "@kavriel/mobile", "--", "--port", "8081"],
+      "port": 8081
+    }
+  ]
+}
