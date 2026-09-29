@@ -25,6 +25,17 @@ export function createApp(): Express {
       logger,
       genReqId: (req) => (req as express.Request).id,
       autoLogging: { ignore: (req) => req.url === '/health' },
+      // One compact line per request; never headers (they carry bearer tokens).
+      serializers: {
+        req: (req: { id: string; method: string; url: string }) => ({
+          id: req.id,
+          method: req.method,
+          url: req.url,
+        }),
+        res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+      },
+      customLogLevel: (_req, res, err) =>
+        err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
     }),
   );
   app.use(helmet());
