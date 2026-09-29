@@ -23,6 +23,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
+      - name: Mobile unit tests (jest-expo)
+        run: npm test -w @kavriel/mobile -- --ci
 
   backend-tests:
     name: Backend tests + migration drift

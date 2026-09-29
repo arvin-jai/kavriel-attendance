@@ -54,13 +54,14 @@ Design details live in [BLUEPRINT.md](BLUEPRINT.md); running and operating the s
 
 ### Delivery
 
-| #   | Step                                                                                              | Status | Notes                                                                                                                  |
-| --- | ------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
-| 24  | Automated tests: 25 unit + 32 integration (full E2E flow over HTTP + PostgreSQL, security matrix) | ✅     | `npm test`                                                                                                             |
-| 24b | Mobile component tests (jest-expo) and Maestro device flows                                       | ⬜     | Next: scanner state machine, API client refresh logic, login → start → QR flow                                         |
-| 24c | Load test (k6: 60 check-ins in 30 s + teacher polling)                                            | ⬜     | Target p95 < 500 ms warm                                                                                               |
-| 25  | Free deployment: Render (API) + Neon (Postgres), secrets, first `migrate deploy`, EAS preview APK | ⬜     | Config is ready (`render.yaml`, `eas.json`); provisioning needs the owner's accounts. Re-verify free-tier terms first. |
-| 25b | Classroom pilot: 2+ phones, projector/phone QR at 3–4 m, cold start timing                        | ⬜     | Record results in HANDOFF.md                                                                                           |
+| #   | Step                                                                                                                      | Status | Notes                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 24  | Automated tests: 25 unit + 32 integration (full E2E flow over HTTP + PostgreSQL, security matrix)                         | ✅     | `npm test`                                                                                                                                        |
+| 24b | Mobile unit tests (jest-expo): check-in outcomes, QR token decoding, API client refresh/expiry/errors, rotating-QR timing | ✅     | `npm test -w @kavriel/mobile` (26 tests, runs in CI)                                                                                              |
+| 24c | Load test: N students check in over a window while the teacher polls and refreshes the QR; verifies exactly-once          | ✅     | `npm run loadtest -w @kavriel/backend`. Local, warm: 60 in 30 s → p95 62 ms; 200 in 10 s → p95 41 ms. Re-run against staging with `LOADTEST_URL`. |
+| 24d | Maestro device flows (teacher login → start → QR; student scan)                                                           | ⬜     | Needs an emulator or device                                                                                                                       |
+| 25  | Free deployment: Render (API) + Neon (Postgres), secrets, first `migrate deploy`, EAS preview APK                         | ⬜     | Config is ready (`render.yaml`, `eas.json`); provisioning needs the owner's accounts. Re-verify free-tier terms first.                            |
+| 25b | Classroom pilot: 2+ phones, projector/phone QR at 3–4 m, cold start timing                                                | ⬜     | Record results in HANDOFF.md                                                                                                                      |
 
 ## Definition of Done (MVP) checklist
 

@@ -5,6 +5,8 @@ import { AppState } from 'react-native';
 import { ApiError } from '@/api/client';
 import { sessionsApi } from '@/api/endpoints';
 
+import { isForeground } from './appState';
+
 interface RotatingQr {
   /** Current token, or null when it has expired and no fresh one has arrived (never show a stale QR). */
   token: string | null;
@@ -31,7 +33,7 @@ export function useRotatingQr(sessionId: string, enabled = true): RotatingQr {
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    let active = AppState.currentState === 'active';
+    let active = isForeground(AppState.currentState);
 
     const schedule = (ms: number) => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -61,7 +63,7 @@ export function useRotatingQr(sessionId: string, enabled = true): RotatingQr {
     void load();
     const tick = setInterval(() => setNow(Date.now()), 250);
     const sub = AppState.addEventListener('change', (state) => {
-      active = state === 'active';
+      active = isForeground(state);
       if (active) void load();
       else if (timerRef.current) clearTimeout(timerRef.current);
     });

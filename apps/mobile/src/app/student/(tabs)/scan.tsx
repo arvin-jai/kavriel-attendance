@@ -2,7 +2,7 @@
  * Student check-in. The app never claims success on its own: "Attendance recorded" is shown
  * only for a 200/201 from the API, or when a follow-up lookup finds the server's record.
  */
-import { looksLikeAttendanceQr, type CheckInResultDto } from '@kavriel/shared';
+import type { CheckInResultDto } from '@kavriel/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
@@ -10,13 +10,11 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 
-import { ApiError } from '@/api/client';
-import { errorMessage } from '@/api/errors';
 import { studentAttendanceApi } from '@/api/endpoints';
 import { AttendanceBadge } from '@/components/common';
 import { QRScanner } from '@/components/QRScanner';
 import { AppText, Button, Card, LoadingState, Screen } from '@/components/ui';
-import { sessionIdFromToken } from '@/features/attendance/qrToken';
+import { runCheckIn } from '@/features/attendance/checkInFlow';
 import { formatTime } from '@/lib/format';
 import { colors, spacing } from '@/theme';
 
@@ -60,79 +58,27 @@ export default function ScanScreen() {
     );
   };
 
-  /** After a network failure, ask the server whether the check-in was recorded anyway. */
-  async function reconcile(token: string): Promise<boolean> {
-    const sessionId = sessionIdFromToken(token);
-    if (!sessionId) return false;
-    setState({ kind: 'checking' });
-    try {
-      const { items } = await studentAttendanceApi.my({ sessionId, limit: 1 });
-      const record = items[0];
-      if (!record) return false;
-      setState({
-        kind: 'success',
-        result: {
-          alreadyRecorded: true,
-          attendance: { id: record.id, status: record.status, checkInTime: record.checkInTime },
-          session: {
-            id: record.session.id,
-            classCode: record.session.class.classCode,
-            sectionName: record.session.class.sectionName,
-            subjectCode: record.session.class.subject.subjectCode,
-            subjectName: record.session.class.subject.subjectName,
-          },
-        },
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function onScan(data: string) {
     if (busy.current) return;
-    const token = data.trim();
-    if (!looksLikeAttendanceQr(token)) {
-      resumeWithHint("That isn't a Kavriel attendance QR code.");
-      return;
-    }
-
     busy.current = true;
     setState({ kind: 'validating' });
     try {
-      const result = await studentAttendanceApi.checkIn(token, Crypto.randomUUID());
-      haptic('success');
-      setState({ kind: 'success', result });
-      void qc.invalidateQueries({ queryKey: ['my'] });
-    } catch (err) {
-      const code = err instanceof ApiError ? err.code : 'UNKNOWN';
-      if (code === 'QR_EXPIRED') {
+      const outcome = await runCheckIn(data, {
+        checkIn: (token) => studentAttendanceApi.checkIn(token, Crypto.randomUUID()),
+        findRecord: async (sessionId) =>
+          (await studentAttendanceApi.my({ sessionId, limit: 1 })).items[0],
+        onReconciling: () => setState({ kind: 'checking' }),
+      });
+      if (outcome.kind === 'success') {
+        haptic('success');
+        setState({ kind: 'success', result: outcome.result });
+        void qc.invalidateQueries({ queryKey: ['my'] });
+      } else if (outcome.kind === 'retry') {
         haptic('error');
-        resumeWithHint('QR expired. Please scan the current QR code.');
-      } else if (code === 'NETWORK' || code === 'TIMEOUT') {
-        if (await reconcile(token)) {
-          haptic('success');
-          void qc.invalidateQueries({ queryKey: ['my'] });
-        } else {
-          haptic('error');
-          setState({
-            kind: 'error',
-            title: "Couldn't confirm your attendance",
-            message: `${errorMessage(err)} Scanning again is safe: you can only be recorded once.`,
-          });
-        }
+        resumeWithHint(outcome.hint);
       } else {
         haptic('error');
-        const titles: Partial<Record<string, string>> = {
-          NOT_ENROLLED: 'Not enrolled',
-          SESSION_NOT_ACTIVE: 'Attendance closed',
-          QR_INVALID: 'Invalid QR code',
-        };
-        setState({
-          kind: 'error',
-          title: titles[code] ?? 'Check-in failed',
-          message: errorMessage(err),
-        });
+        setState({ kind: 'error', title: outcome.title, message: outcome.message });
       }
     } finally {
       busy.current = false;

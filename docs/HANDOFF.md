@@ -81,9 +81,11 @@ Generate secrets with `node -e "console.log(require('crypto').randomBytes(48).to
 ### Tests
 
 ```bash
-npm test                                           # all workspaces (backend: unit + integration)
+npm test                                           # all workspaces (backend unit + integration, mobile jest)
 npm run test:unit -w @kavriel/backend
 npm run test:integration -w @kavriel/backend       # starts a throwaway Postgres; or set TEST_DATABASE_URL
+npm test -w @kavriel/mobile                        # jest-expo: check-in flow, API client, rotating QR
+npm run loadtest -w @kavriel/backend               # classroom load test (STUDENTS, WINDOW_SECONDS, LOADTEST_URL)
 ```
 
 ## 4. Key decisions (and why)

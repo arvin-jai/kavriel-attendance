@@ -5,6 +5,8 @@ import { AppState } from 'react-native';
 import { ApiError } from '@/api/client';
 import { sessionsApi } from '@/api/endpoints';
 
+import { isForeground } from './appState';
+
 const FULL_REFRESH_EVERY = 10; // polls; picks up roster changes (enrollments) too
 
 interface LiveRecords {
@@ -61,9 +63,9 @@ export function useLiveRecords(sessionId: string, intervalMs: number | false): L
 
   useEffect(() => {
     if (!intervalMs) return;
-    let active = AppState.currentState === 'active';
+    let active = isForeground(AppState.currentState);
     const sub = AppState.addEventListener('change', (state) => {
-      active = state === 'active';
+      active = isForeground(state);
       if (active) void fetchRecords(true);
     });
     const timer = setInterval(() => {
