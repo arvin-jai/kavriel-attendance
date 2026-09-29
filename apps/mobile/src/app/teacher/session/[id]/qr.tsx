@@ -26,6 +26,16 @@ export default function SessionQrScreen() {
   const live = useLiveRecords(id, isActive ? 3_000 : false);
   const [clock, setClock] = useState(() => new Date().toISOString());
 
+  // The session may be ended or locked from another screen or device: when the QR endpoint
+  // or the roster poll says so, reload it so this screen stops showing "Attendance Active".
+  const { refetch: refetchSession } = session;
+  const closedElsewhere =
+    qr.error?.code === 'SESSION_NOT_ACTIVE' ||
+    (live.data !== null && live.data.session.status !== 'ACTIVE');
+  useEffect(() => {
+    if (isActive && closedElsewhere) void refetchSession();
+  }, [isActive, closedElsewhere, refetchSession]);
+
   useEffect(() => {
     const t = setInterval(() => setClock(new Date().toISOString()), 15_000);
     return () => clearInterval(t);

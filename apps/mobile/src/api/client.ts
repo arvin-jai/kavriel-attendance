@@ -80,7 +80,13 @@ async function send(path: string, opts: RequestOptions): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
   if (opts.auth !== false && accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  if (deviceIdProvider) headers['X-Device-Install-Id'] = await deviceIdProvider();
+  if (deviceIdProvider) {
+    try {
+      headers['X-Device-Install-Id'] = await deviceIdProvider();
+    } catch {
+      // Audit-only header; never block a request over it.
+    }
+  }
 
   try {
     return await fetch(buildUrl(path, opts.query), {
@@ -158,7 +164,8 @@ export async function requestEnvelope<T>(
   const res = await sendWithRefresh(path, opts);
   if (!res.ok) {
     const err = await toApiError(res);
-    if (err.code === 'ACCOUNT_DISABLED') onSessionExpired?.();
+    // Only end an existing session; a disabled account at sign-in is just a login error.
+    if (err.code === 'ACCOUNT_DISABLED' && opts.auth !== false) onSessionExpired?.();
     throw err;
   }
   if (res.status === 204) return { data: undefined as T };

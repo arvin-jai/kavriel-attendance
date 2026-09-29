@@ -120,6 +120,44 @@ describe('runCheckIn', () => {
     expect((await runCheckIn(TOKEN, d)).kind).toBe('error');
   });
 
+  it.each(['ABSENT', 'EXCUSED'] as const)(
+    'never shows an existing %s record as a successful check-in',
+    async (status) => {
+      const already: CheckInResultDto = {
+        ...result,
+        alreadyRecorded: true,
+        attendance: { id: 'a1', status, checkInTime: null },
+      };
+      const outcome = await runCheckIn(
+        TOKEN,
+        deps({ checkIn: jest.fn().mockResolvedValue(already) }),
+      );
+      expect(outcome).toMatchObject({
+        kind: 'error',
+        title: `Already marked ${status.toLowerCase()}`,
+      });
+
+      // Same after a network failure + reconcile.
+      const reconciled = await runCheckIn(
+        TOKEN,
+        deps({
+          checkIn: jest.fn().mockRejectedValue(new ApiError(0, 'TIMEOUT', 'slow')),
+          findRecord: jest.fn().mockResolvedValue({ ...record, status, checkInTime: null }),
+        }),
+      );
+      expect(reconciled.kind).toBe('error');
+    },
+  );
+
+  it('shows LATE as a successful check-in', async () => {
+    const late: CheckInResultDto = {
+      ...result,
+      attendance: { ...result.attendance, status: 'LATE' },
+    };
+    const outcome = await runCheckIn(TOKEN, deps({ checkIn: jest.fn().mockResolvedValue(late) }));
+    expect(outcome.kind).toBe('success');
+  });
+
   it('shows a generic error for unexpected failures', async () => {
     const d = deps({ checkIn: jest.fn().mockRejectedValue(new Error('boom')) });
     await expect(runCheckIn(TOKEN, d)).resolves.toMatchObject({

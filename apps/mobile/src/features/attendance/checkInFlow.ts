@@ -50,6 +50,24 @@ function fromRecord(record: MyAttendanceItemDto): CheckInResultDto {
   };
 }
 
+/**
+ * A record only counts as "attended" when it is PRESENT or LATE. The server may return an
+ * existing ABSENT/EXCUSED record (the teacher marked it, or the session ended mid-scan);
+ * that must never be shown as a successful check-in.
+ */
+function fromServer(result: CheckInResultDto, reconciled: boolean): CheckInOutcome {
+  const { status } = result.attendance;
+  if (status === 'ABSENT' || status === 'EXCUSED') {
+    const label = status === 'ABSENT' ? 'absent' : 'excused';
+    return {
+      kind: 'error',
+      title: `Already marked ${label}`,
+      message: `Your teacher has recorded you as ${label} for this session. Talk to your teacher if that's wrong.`,
+    };
+  }
+  return { kind: 'success', result, reconciled };
+}
+
 export async function runCheckIn(rawData: string, deps: CheckInDeps): Promise<CheckInOutcome> {
   const token = rawData.trim();
   if (!looksLikeAttendanceQr(token)) {
@@ -57,7 +75,7 @@ export async function runCheckIn(rawData: string, deps: CheckInDeps): Promise<Ch
   }
 
   try {
-    return { kind: 'success', result: await deps.checkIn(token), reconciled: false };
+    return fromServer(await deps.checkIn(token), false);
   } catch (err) {
     const code = err instanceof ApiError ? err.code : 'UNKNOWN';
 
@@ -72,7 +90,7 @@ export async function runCheckIn(rawData: string, deps: CheckInDeps): Promise<Ch
         deps.onReconciling?.();
         try {
           const record = await deps.findRecord(sessionId);
-          if (record) return { kind: 'success', result: fromRecord(record), reconciled: true };
+          if (record) return fromServer(fromRecord(record), true);
         } catch {
           // Still offline: fall through to the error below.
         }

@@ -86,6 +86,31 @@ describe('cross-teacher isolation (IDOR)', () => {
     expect((await as(outsider.token).get(`/classes/${classId}`)).status).toBe(404);
     expect((await as(outsider.token).get('/classes')).body.data).toEqual([]);
   });
+
+  it("students can't read schedules of classes they aren't enrolled in", async () => {
+    const teacher = await registerTeacher();
+    const enrolled = await registerStudent();
+    const outsider = await registerStudent();
+    const { classId } = await classWithStudents(teacher, [enrolled]);
+    const schedule = await as(teacher.token).post('/schedules', {
+      classId,
+      dayOfWeek: 'WED',
+      startTime: '13:00',
+      endTime: '14:00',
+      room: 'Room 9',
+    });
+    const id = schedule.body.data.id as string;
+
+    expect((await as(enrolled.token).get(`/schedules/${id}`)).status).toBe(200);
+    const leak = await as(outsider.token).get(`/schedules/${id}`);
+    expect(leak.status).toBe(404);
+    expect(JSON.stringify(leak.body)).not.toContain('Room 9');
+
+    // The owning teacher can still read it after archiving the class.
+    await as(teacher.token).patch(`/classes/${classId}`, { status: 'ARCHIVED' });
+    expect((await as(teacher.token).get(`/schedules/${id}`)).status).toBe(200);
+    expect((await as(enrolled.token).get(`/schedules/${id}`)).status).toBe(404);
+  });
 });
 
 describe('role boundaries', () => {

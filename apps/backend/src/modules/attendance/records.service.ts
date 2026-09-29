@@ -20,7 +20,7 @@ import { conflict, notFound } from '../../lib/http-errors';
 import { localDateEnd, localDateStart } from '../../lib/time';
 import { enrolledClass, ownedAttendance, ownedSession } from '../../policies/ownership';
 import type { StudentActor, TeacherActor } from '../../types/actor';
-import { diff, recordAudit } from '../audit/audit.service';
+import { diff, recordAudit, type DbClient } from '../audit/audit.service';
 import {
   classRefSelect,
   countsFrom,
@@ -109,6 +109,18 @@ export async function sessionRecords(
   };
 }
 
+/**
+ * Session status read with FOR SHARE inside the caller's transaction. A concurrent end/lock
+ * (an UPDATE of that row) must wait until this transaction finishes, so an edit can never
+ * land after the session was locked.
+ */
+async function lockedSessionStatus(tx: DbClient, sessionId: string): Promise<string> {
+  const rows = await tx.$queryRaw<{ status: string }[]>`
+    SELECT status::text AS status FROM "AttendanceSession" WHERE id = ${sessionId}::uuid FOR SHARE`;
+  if (!rows[0]) throw notFound('Attendance session');
+  return rows[0].status;
+}
+
 /** Teacher correction of an existing record (status and/or remarks). Audited with before/after. */
 export async function updateRecord(
   actor: TeacherActor,
@@ -119,11 +131,7 @@ export async function updateRecord(
   assertEditable(before.session.status);
 
   const updated = await prisma.$transaction(async (tx) => {
-    // Re-check under the transaction: a lock may have landed in between.
-    const session = await tx.attendanceSession.findUniqueOrThrow({
-      where: { id: before.sessionId },
-    });
-    assertEditable(session.status);
+    assertEditable(await lockedSessionStatus(tx, before.sessionId));
     const row = await tx.attendance.update({
       where: { id: attendanceId },
       data: {
@@ -171,6 +179,7 @@ export async function markStudent(
   if (!enrollment) throw notFound('Enrolled student');
 
   const created = await prisma.$transaction(async (tx) => {
+    assertEditable(await lockedSessionStatus(tx, sessionId));
     const row = await tx.attendance.create({
       data: {
         sessionId,

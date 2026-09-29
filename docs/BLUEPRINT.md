@@ -1016,17 +1016,21 @@ See §20–21. Ownership helpers live in `src/policies/ownership.ts` and are use
 
 ## 50. Rate limiting
 
-`express-rate-limit` with the in-memory store (acceptable for a single instance; move to Postgres- or Redis-backed stores only when scaling to more than one instance):
+`express-rate-limit` with the in-memory store (acceptable for a single instance; move to Postgres- or Redis-backed stores only when scaling to more than one instance).
 
-| Scope                  | Limit                                                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Global                 | 300 / 15 min / IP                                                                                                                   |
-| `/auth/login`          | 5 / 15 min / (IP + email)                                                                                                           |
-| `/auth/register`       | 10 / hour / IP                                                                                                                      |
-| `/auth/refresh`        | 30 / 15 min / IP                                                                                                                    |
-| `/attendance/check-in` | 10 / min / user and 60 / min / IP. Classrooms often share one NAT IP, so the per-user limit is primary and the IP limit is generous |
-| `/students/lookup`     | 30 / min / user                                                                                                                     |
-| `…/qr`                 | 30 / min / user                                                                                                                     |
+**As built:** a whole school usually reaches the API from **one public IP** (school Wi-Fi NAT). Per-IP limits
+are therefore only high backstops; the real limits are keyed per user, per email or per refresh token.
+`test/integration/rate-limits.test.ts` checks 70 students registering and checking in from one IP.
+
+| Scope                  | Limit                                                        |
+| ---------------------- | ------------------------------------------------------------ |
+| Global (all `/api/v1`) | 6000 / min / IP (backstop)                                   |
+| `/auth/login`          | 10 / 15 min / email, plus 2000 / 15 min / IP backstop        |
+| `/auth/register`       | 1000 / hour / IP (a whole class registers from school Wi-Fi) |
+| `/auth/refresh`        | 20 / 15 min / refresh token, plus 5000 / 15 min / IP         |
+| `/attendance/check-in` | 10 / min / user, plus 2000 / min / IP backstop               |
+| `/students/lookup`     | 30 / min / user                                              |
+| `…/qr`                 | 30 / min / user                                              |
 
 ## 51. Audit logging
 

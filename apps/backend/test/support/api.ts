@@ -95,8 +95,15 @@ export function as(token: string) {
   };
 }
 
-export async function currentSemesterId(): Promise<number> {
-  const semester = await prisma.semester.findFirstOrThrow({ orderBy: { startDate: 'desc' } });
+/** Date the time-sensitive tests pretend it is (a Monday in 1st Semester 2026-2027). */
+export const TEST_DAY = '2026-09-28';
+
+/** Semester containing `day` (defaults to TEST_DAY), from the seeded reference data. */
+export async function currentSemesterId(day = TEST_DAY): Promise<number> {
+  const date = new Date(`${day}T00:00:00Z`);
+  const semester = await prisma.semester.findFirstOrThrow({
+    where: { startDate: { lte: date }, endDate: { gte: date } },
+  });
   return semester.id;
 }
 

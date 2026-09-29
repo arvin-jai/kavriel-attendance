@@ -125,6 +125,23 @@ describe('api client', () => {
     await expect(api('/x')).rejects.toMatchObject({ status: 502, code: 'UNKNOWN' });
   });
 
+  it('ends the session for a disabled account, but not on the sign-in request', async () => {
+    const onExpired = jest.fn();
+    setSessionExpiredHandler(onExpired);
+    handler = () =>
+      json(403, { error: { code: 'ACCOUNT_DISABLED', message: 'This account is disabled' } });
+
+    await expect(
+      api('/auth/login', { method: 'POST', body: {}, auth: false }),
+    ).rejects.toMatchObject({
+      code: 'ACCOUNT_DISABLED',
+    });
+    expect(onExpired).not.toHaveBeenCalled();
+
+    await expect(api('/classes')).rejects.toMatchObject({ code: 'ACCOUNT_DISABLED' });
+    expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+
   it('returns undefined for 204 No Content', async () => {
     handler = () => new Response(null, { status: 204 });
     await expect(api('/x', { method: 'DELETE' })).resolves.toBeUndefined();

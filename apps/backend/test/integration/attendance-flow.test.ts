@@ -263,4 +263,71 @@ describe('attendance flow', () => {
     expect(again.status).toBe(200);
     expect(again.body.data.id).toBe(enrollment.id);
   });
+
+  it("lists only the current semester's classes in today's schedule", async () => {
+    const teacher = await registerTeacher();
+    const student = await registerStudent();
+    const t = as(teacher.token);
+    const now = await classWithStudents(teacher, [student], 'NOWSEM');
+    // A class from the previous academic year that nobody archived.
+    const oldSemester = await currentSemesterId('2026-01-15');
+    const subject = await t.post('/subjects', { subjectCode: 'OLD-1', subjectName: 'Old' });
+    const old = await t.post('/classes', {
+      subjectId: subject.body.data.id,
+      semesterId: oldSemester,
+      sectionName: 'Old',
+      classCode: 'OLD-1',
+    });
+    await t.post(`/classes/${old.body.data.id}/students`, { studentNumber: student.studentNumber });
+    for (const classId of [now.classId, old.body.data.id]) {
+      await t.post('/schedules', {
+        classId,
+        dayOfWeek: 'MON',
+        startTime: '09:00',
+        endTime: '10:00',
+      });
+    }
+
+    clock.now = () => new Date('2026-09-28T01:05:00Z'); // Monday 09:05 Manila
+    for (const token of [teacher.token, student.token]) {
+      const today = await as(token).get('/schedules/today');
+      expect(today.body.data.map((s: { class: { id: string } }) => s.class.id)).toEqual([
+        now.classId,
+      ]);
+    }
+  });
+
+  it('keeps percentages over all records when a report is filtered by status', async () => {
+    const teacher = await registerTeacher();
+    const student = await registerStudent();
+    const { classId } = await classWithStudents(teacher, [student]);
+
+    // Session 1: present. Session 2: absent (never scanned).
+    const first = await startSession(teacher, classId);
+    await as(student.token).post('/attendance/check-in', { qrToken: first.qrToken });
+    await as(teacher.token).post(`/attendance/sessions/${first.sessionId}/end`);
+    const second = await startSession(teacher, classId);
+    await as(teacher.token).post(`/attendance/sessions/${second.sessionId}/end`);
+
+    const absent = await as(teacher.token).get(
+      `/reports/attendance?classId=${classId}&status=ABSENT`,
+    );
+    expect(absent.body.data.rows).toHaveLength(1);
+    expect(absent.body.data.rows[0]).toMatchObject({
+      counts: { PRESENT: 1, ABSENT: 1 },
+      totalSessions: 2,
+      percentage: 50,
+    });
+
+    const bySession = await as(teacher.token).get(
+      `/reports/attendance?classId=${classId}&status=ABSENT&groupBy=session`,
+    );
+    expect(bySession.body.data.rows).toHaveLength(1);
+    expect(bySession.body.data.rows[0].session.id).toBe(second.sessionId);
+
+    const excused = await as(teacher.token).get(
+      `/reports/attendance?classId=${classId}&status=EXCUSED`,
+    );
+    expect(excused.body.data.rows).toEqual([]);
+  });
 });

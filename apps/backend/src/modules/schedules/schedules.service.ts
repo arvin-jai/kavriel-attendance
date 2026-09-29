@@ -5,12 +5,13 @@ import type { z } from 'zod';
 import { prisma } from '../../config/database';
 import { env } from '../../config/env';
 import type { Prisma } from '../../generated/prisma/client';
-import { badRequest, conflict } from '../../lib/http-errors';
+import { badRequest, conflict, notFound } from '../../lib/http-errors';
 import {
   clock,
   dbToTime,
   localDayOfWeek,
   localMinutes,
+  localParts,
   timeToDb,
   timeToMinutes,
 } from '../../lib/time';
@@ -21,15 +22,27 @@ import { assertActiveOwnedClass } from '../classes/classes.service';
 import { scheduleInclude, toScheduleDto } from '../mappers';
 import { durationError, findConflicts, withinStartWindow, type TimeSlot } from './schedule-rules';
 
-function scopeFor(actor: Actor): Prisma.ScheduleWhereInput {
+function scopeFor(
+  actor: Actor,
+  extraClassWhere: Prisma.ClassSectionWhereInput = {},
+): Prisma.ScheduleWhereInput {
   return actor.role === 'TEACHER'
-    ? { class: { teacherId: actor.teacherId!, status: 'ACTIVE' } }
+    ? { class: { teacherId: actor.teacherId!, status: 'ACTIVE', ...extraClassWhere } }
     : {
         class: {
           status: 'ACTIVE',
           enrollments: { some: { studentId: actor.studentId!, status: 'ACTIVE' } },
+          ...extraClassWhere,
         },
       };
+}
+
+/** Classes whose semester includes the given school-local date. */
+function inSemesterOn(date: Date): Prisma.ClassSectionWhereInput {
+  const p = localParts(date);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = new Date(`${p.year}-${pad(p.month)}-${pad(p.day)}T00:00:00Z`);
+  return { semester: { startDate: { lte: day }, endDate: { gte: day } } };
 }
 
 /** Reject overlaps with the teacher's other active schedules in the same semester. */
@@ -94,8 +107,9 @@ export async function today(actor: Actor): Promise<TodayScheduleDto[]> {
   const day = localDayOfWeek(now);
   const minutes = localMinutes(now);
 
+  // Only the current semester's classes meet today (past terms may not have been archived).
   const rows = await prisma.schedule.findMany({
-    where: { ...scopeFor(actor), status: 'ACTIVE', dayOfWeek: day },
+    where: { ...scopeFor(actor, inSemesterOn(now)), status: 'ACTIVE', dayOfWeek: day },
     include: scheduleInclude,
     orderBy: { startTime: 'asc' },
   });
@@ -128,16 +142,14 @@ export async function get(actor: Actor, id: string): Promise<ScheduleDto> {
     where: { id, ...scopeFor(actor) },
     include: scheduleInclude,
   });
-  if (!row) {
-    // Teachers can still read schedules of their archived classes.
-    if (actor.role === 'TEACHER') await ownedSchedule(prisma, actor.teacherId!, id);
-    const fallback = await prisma.schedule.findUniqueOrThrow({
-      where: { id },
-      include: scheduleInclude,
-    });
-    return toScheduleDto(fallback);
-  }
-  return toScheduleDto(row);
+  if (row) return toScheduleDto(row);
+
+  // Outside the active scope: only the owning teacher may still read it (archived class).
+  if (actor.role !== 'TEACHER') throw notFound('Schedule');
+  await ownedSchedule(prisma, actor.teacherId!, id);
+  return toScheduleDto(
+    await prisma.schedule.findUniqueOrThrow({ where: { id }, include: scheduleInclude }),
+  );
 }
 
 export async function create(

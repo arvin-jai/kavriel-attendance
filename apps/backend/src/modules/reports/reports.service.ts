@@ -37,8 +37,13 @@ function sessionWhere(actor: TeacherActor, q: ReportQuery): Prisma.AttendanceSes
 }
 
 function recordWhere(actor: TeacherActor, q: ReportQuery): Prisma.AttendanceWhereInput {
-  return { session: sessionWhere(actor, q), studentId: q.studentId, status: q.status };
+  // No status filter here: counts and percentages always cover every record. The status
+  // filter only selects which rows appear (see `hasStatus`).
+  return { session: sessionWhere(actor, q), studentId: q.studentId };
 }
+
+const hasStatus = (q: ReportQuery) => (row: { counts: Record<string, number> }) =>
+  !q.status || (row.counts[q.status] ?? 0) > 0;
 
 async function byStudent(actor: TeacherActor, q: ReportQuery): Promise<StudentReportRowDto[]> {
   const records = await prisma.attendance.findMany({
@@ -61,6 +66,7 @@ async function byStudent(actor: TeacherActor, q: ReportQuery): Promise<StudentRe
     row.totalSessions += 1;
   }
   return [...rows.values()]
+    .filter(hasStatus(q))
     .map((row) => ({ ...row, percentage: attendancePercentage(row.counts) }))
     .sort(
       (a, b) =>
@@ -83,20 +89,21 @@ async function bySession(actor: TeacherActor, q: ReportQuery): Promise<SessionRe
     where: {
       sessionId: { in: sessions.map((s) => s.id) },
       studentId: q.studentId,
-      status: q.status,
     },
     _count: { _all: true },
   });
-  return sessions.map((s) => {
-    const counts = emptyCounts();
-    for (const g of grouped) if (g.sessionId === s.id) counts[g.status] += g._count._all;
-    return {
-      session: { id: s.id, startedAt: s.startedAt?.toISOString() ?? null, status: s.status },
-      class: toClassRef(s.class),
-      counts,
-      enrolledCount: counts.PRESENT + counts.LATE + counts.ABSENT + counts.EXCUSED,
-    };
-  });
+  return sessions
+    .map((s) => {
+      const counts = emptyCounts();
+      for (const g of grouped) if (g.sessionId === s.id) counts[g.status] += g._count._all;
+      return {
+        session: { id: s.id, startedAt: s.startedAt?.toISOString() ?? null, status: s.status },
+        class: toClassRef(s.class),
+        counts,
+        enrolledCount: counts.PRESENT + counts.LATE + counts.ABSENT + counts.EXCUSED,
+      };
+    })
+    .filter(hasStatus(q));
 }
 
 export async function report(actor: TeacherActor, q: ReportQuery): Promise<AttendanceReportDto> {
