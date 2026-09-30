@@ -90,7 +90,7 @@ switch code, drop the old one in a later release), so a rollback of the app neve
 
 | Workflow        | Schedule                              | Purpose                                                                               | Needs                                                                           |
 | --------------- | ------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `keep-warm.yml` | every 10 min, Mon–Sat 06:00–18:00 PHT | avoids a cold start before class; sleeps otherwise to stay inside free instance hours | repo variable `API_HEALTH_URL` (e.g. `https://kavriel-api.onrender.com/health`) |
+| `keep-warm.yml` | every 10 min, Mon–Sat 06:00–18:00 PHT | avoids a cold start before class; sleeps otherwise to stay inside free instance hours | repo variable `API_HEALTH_URL` (e.g. `https://kavriel-attendance.onrender.com/health`) |
 | `backup.yml`    | daily 02:00 PHT                       | `pg_dump` (PostgreSQL 17 client) → encrypted with `age` → 30-day artifact             | secrets `DIRECT_URL`, `AGE_PUBLIC_KEY`                                          |
 
 Both are no-ops until configured.

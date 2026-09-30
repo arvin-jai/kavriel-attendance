@@ -13,12 +13,12 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://kavriel-api.onrender.com/api/v1" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://kavriel-attendance.onrender.com/api/v1" }
     },
     "production": {
       "autoIncrement": true,
       "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://kavriel-api.onrender.com/api/v1" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://kavriel-attendance.onrender.com/api/v1" }
     }
   },
   "submit": {

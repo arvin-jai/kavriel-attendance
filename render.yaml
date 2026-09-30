@@ -3,7 +3,7 @@
 # Nothing here is Render-specific in the code: the same build/start commands run anywhere Node runs.
 services:
   - type: web
-    name: kavriel-api
+    name: kavriel-attendance
     runtime: node
     plan: free
     region: singapore
