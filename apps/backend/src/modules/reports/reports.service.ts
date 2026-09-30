@@ -119,6 +119,79 @@ function localDateTime(iso: string | null): string {
   return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}`;
 }
 
+const STATUS_LABEL = { PRESENT: 'Present', LATE: 'Late', ABSENT: 'Absent', EXCUSED: 'Excused' };
+
+/**
+ * One row per student, one column per session (oldest first) holding that student's status.
+ * Columns are labelled by date; the time is added when two sessions share a date, and the
+ * class code when the report spans several classes. A blank cell means no record for that
+ * session (e.g. the student was enrolled later).
+ */
+async function studentMatrixCsv(
+  actor: TeacherActor,
+  q: ReportQuery,
+  rows: StudentReportRowDto[],
+): Promise<string> {
+  const records = await prisma.attendance.findMany({
+    where: { ...recordWhere(actor, q), studentId: { in: rows.map((r) => r.student.id) } },
+    select: {
+      status: true,
+      studentId: true,
+      session: { select: { id: true, startedAt: true, class: { select: { classCode: true } } } },
+    },
+  });
+
+  const sessions = new Map<string, { startedAt: Date | null; classCode: string }>();
+  const status = new Map<string, string>(); // `${studentId}:${sessionId}` → label
+  for (const r of records) {
+    sessions.set(r.session.id, {
+      startedAt: r.session.startedAt,
+      classCode: r.session.class.classCode,
+    });
+    status.set(`${r.studentId}:${r.session.id}`, STATUS_LABEL[r.status]);
+  }
+  const columns = [...sessions.entries()]
+    .sort(([, a], [, b]) => (a.startedAt?.getTime() ?? 0) - (b.startedAt?.getTime() ?? 0))
+    .map(([sessionId, s]) => {
+      const dateTime = localDateTime(s.startedAt?.toISOString() ?? null);
+      return { sessionId, classCode: s.classCode, dateTime, date: dateTime.slice(0, 10) };
+    });
+
+  const multiClass = new Set(columns.map((c) => c.classCode)).size > 1;
+  const labels = columns.map((c) => {
+    const sameDay = columns.filter((o) => o.date === c.date && o.classCode === c.classCode);
+    const when = sameDay.length > 1 ? c.dateTime : c.date;
+    return multiClass ? `${c.classCode} ${when}` : when;
+  });
+
+  return toCsv(
+    [
+      'Student Number',
+      'Last Name',
+      'First Name',
+      'Year Level',
+      ...labels,
+      'Total Present',
+      'Total Late',
+      'Total Absent',
+      'Total Excused',
+      'Attendance %',
+    ],
+    rows.map((r) => [
+      r.student.studentNumber,
+      r.student.lastName,
+      r.student.firstName,
+      r.student.yearLevel,
+      ...columns.map((c) => status.get(`${r.student.id}:${c.sessionId}`) ?? ''),
+      r.counts.PRESENT,
+      r.counts.LATE,
+      r.counts.ABSENT,
+      r.counts.EXCUSED,
+      r.percentage,
+    ]),
+  );
+}
+
 export async function reportCsv(
   actor: TeacherActor,
   q: ReportQuery,
@@ -127,32 +200,7 @@ export async function reportCsv(
   const data = await report(actor, q);
   const csv =
     data.groupBy === 'student'
-      ? toCsv(
-          [
-            'Student Number',
-            'Last Name',
-            'First Name',
-            'Year Level',
-            'Present',
-            'Late',
-            'Absent',
-            'Excused',
-            'Total',
-            'Attendance %',
-          ],
-          data.rows.map((r) => [
-            r.student.studentNumber,
-            r.student.lastName,
-            r.student.firstName,
-            r.student.yearLevel,
-            r.counts.PRESENT,
-            r.counts.LATE,
-            r.counts.ABSENT,
-            r.counts.EXCUSED,
-            r.totalSessions,
-            r.percentage,
-          ]),
-        )
+      ? await studentMatrixCsv(actor, q, data.rows)
       : toCsv(
           [
             'Started',

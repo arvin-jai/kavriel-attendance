@@ -181,6 +181,11 @@ describe('attendance flow', () => {
     expect(csv.status).toBe(200);
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.text).toContain('Aquino');
+    const [header, ...lines] = csv.text.replace('﻿', '').trim().split('\r\n');
+    expect(header).toMatch(
+      /^Student Number,Last Name,First Name,Year Level,\d{4}-\d{2}-\d{2},Total Present,Total Late,Total Absent,Total Excused,Attendance %$/,
+    );
+    expect(lines.map((l) => l.split(',')[4]).sort()).toEqual(['Excused', 'Present']);
 
     // Every state change left an audit trail
     const actions = (await prisma.auditLog.findMany({ select: { action: true } })).map(
