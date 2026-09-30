@@ -12,7 +12,7 @@ import { validate } from '@/lib/validation';
 
 /** Profile for both roles: details, contact correction, password change, sign out. */
 export function ProfileScreen() {
-  const { user, setUser, logout } = useAuth();
+  const { user, setUser, logout, replayOnboarding } = useAuth();
   const [contact, setContact] = useState('');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -123,6 +123,13 @@ export function ProfileScreen() {
         To correct your name or school number, contact your school. Your data is used only for class
         attendance.
       </AppText>
+
+      <Button
+        title="How to use Kavriel"
+        variant="secondary"
+        icon="help-circle-outline"
+        onPress={replayOnboarding}
+      />
 
       <Button
         title="Sign out"

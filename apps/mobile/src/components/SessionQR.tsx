@@ -9,9 +9,9 @@ import { AppText } from './ui';
  * Large, high-contrast attendance QR for classroom scanning. Encodes the raw signed token only
  * (no URL, no personal data). A null token shows a placeholder instead of a stale code.
  */
-export function SessionQR({ token }: { token: string | null }) {
+export function SessionQR({ token, size: fixed }: { token: string | null; size?: number }) {
   const { width, height } = useWindowDimensions();
-  const size = Math.min(width * 0.78, height * 0.45, 420);
+  const size = fixed ?? Math.min(width * 0.78, height * 0.45, 420);
 
   return (
     <View

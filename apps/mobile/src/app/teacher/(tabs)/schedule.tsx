@@ -9,12 +9,18 @@ import { WeekSchedule } from '@/components/WeekSchedule';
 export default function TeacherScheduleTab() {
   const schedules = useQuery({ queryKey: ['schedules'], queryFn: () => schedulesApi.list() });
   return (
-    <Screen onRefresh={() => schedules.refetch()} refreshing={schedules.isRefetching}>
-      <Button
-        title="Add schedule"
-        icon="add"
-        onPress={() => router.push('/teacher/schedule-form')}
-      />
+    <Screen
+      onRefresh={() => schedules.refetch()}
+      refreshing={schedules.isRefetching}
+      footer={
+        <Button
+          title="Add schedule"
+          icon="add"
+          size="lg"
+          onPress={() => router.push('/teacher/schedule-form')}
+        />
+      }
+    >
       <QueryView query={schedules}>
         {(list) => (
           <WeekSchedule

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { errorMessage } from '@/api/errors';
 import { classesApi } from '@/api/endpoints';
 import { QueryView } from '@/components/common';
+import { InitialTile, ListGroup, ListRow } from '@/components/patterns';
 import {
   AppText,
   Banner,
@@ -18,7 +19,6 @@ import {
   TextField,
 } from '@/components/ui';
 import { confirm, notify } from '@/lib/confirm';
-import { spacing } from '@/theme';
 
 export default function ClassStudents() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -87,7 +87,7 @@ export default function ClassStudents() {
           />
           <Button
             title="Find"
-            variant="secondary"
+            variant="tonal"
             disabled={!studentNumber.trim()}
             loading={lookup.isPending}
             onPress={() => lookup.mutate()}
@@ -104,6 +104,7 @@ export default function ClassStudents() {
             <Button
               title="Enroll in this class"
               icon="person-add-outline"
+              size="lg"
               loading={enroll.isPending}
               onPress={() => enroll.mutate(found)}
             />
@@ -116,34 +117,38 @@ export default function ClassStudents() {
           query={students}
           empty={<EmptyState icon="people-outline" title="No students enrolled yet" />}
         >
-          {(list) =>
-            list.map((e) => (
-              <Card key={e.id} style={{ paddingVertical: spacing.md }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <AppText style={{ flex: 1 }}>
-                    {e.student.lastName}, {e.student.firstName}
-                  </AppText>
-                  <Button
-                    title="Remove"
-                    variant="ghost"
-                    onPress={async () => {
-                      if (
-                        await confirm(
-                          'Remove student?',
-                          `${e.student.fullName} will leave this class. Past attendance is kept.`,
-                          'Remove',
-                          true,
-                        )
-                      ) {
-                        drop.mutate(e.student.id);
-                      }
-                    }}
-                  />
-                </Row>
-                <AppText variant="small">{e.student.studentNumber}</AppText>
-              </Card>
-            ))
-          }
+          {(list) => (
+            <ListGroup>
+              {list.map((e) => (
+                <ListRow
+                  key={e.id}
+                  leading={
+                    <InitialTile label={`${e.student.firstName} ${e.student.lastName}`} size={40} />
+                  }
+                  title={`${e.student.lastName}, ${e.student.firstName}`}
+                  subtitle={e.student.studentNumber}
+                  right={
+                    <Button
+                      title="Remove"
+                      variant="ghost"
+                      onPress={async () => {
+                        if (
+                          await confirm(
+                            'Remove student?',
+                            `${e.student.fullName} will leave this class. Past attendance is kept.`,
+                            'Remove',
+                            true,
+                          )
+                        ) {
+                          drop.mutate(e.student.id);
+                        }
+                      }}
+                    />
+                  }
+                />
+              ))}
+            </ListGroup>
+          )}
         </QueryView>
       </Section>
     </Screen>

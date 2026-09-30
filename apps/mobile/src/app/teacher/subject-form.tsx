@@ -116,7 +116,12 @@ export default function SubjectForm() {
           />
         </>
       ) : null}
-      <Button title={id ? 'Save changes' : 'Create subject'} onPress={onSave} loading={busy} />
+      <Button
+        title={id ? 'Save changes' : 'Create subject'}
+        onPress={onSave}
+        loading={busy}
+        size="lg"
+      />
     </Screen>
   );
 }

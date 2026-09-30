@@ -7,7 +7,7 @@ import { errorMessage } from '@/api/errors';
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText, Banner, Button, Screen, TextField } from '@/components/ui';
 import { validate } from '@/lib/validation';
-import { colors, spacing } from '@/theme';
+import { colors, fontFamily, spacing } from '@/theme';
 
 export default function LoginScreen() {
   const { login, notice, clearNotice } = useAuth();
@@ -69,13 +69,13 @@ export default function LoginScreen() {
           error={errors.password}
           onSubmitEditing={onSubmit}
         />
-        <Button title="Sign in" onPress={onSubmit} loading={busy} />
+        <Button title="Sign in" size="lg" onPress={onSubmit} loading={busy} />
 
         <View style={{ alignItems: 'center', gap: spacing.sm }}>
           <AppText variant="muted">New to Kavriel?</AppText>
           <Link
             href="/register"
-            style={{ color: colors.primary, fontWeight: '600', padding: spacing.sm }}
+            style={{ color: colors.primaryDark, fontFamily: fontFamily.bold, padding: spacing.sm }}
           >
             Create an account
           </Link>

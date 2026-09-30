@@ -2,18 +2,10 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import { errorMessage } from '@/api/errors';
 import { studentAttendanceApi } from '@/api/endpoints';
-import { AttendanceBadge } from '@/components/common';
-import {
-  AppText,
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Row,
-  Screen,
-  Section,
-} from '@/components/ui';
+import { AttendanceBadge, SkeletonList } from '@/components/common';
+import { InitialTile, ListGroup, ListRow } from '@/components/patterns';
+import { AppText, Button, EmptyState, ErrorState, Screen, Section } from '@/components/ui';
+import { copy } from '@/copy';
 import { formatDate, formatTime, percent } from '@/lib/format';
 import { colors } from '@/theme';
 
@@ -38,45 +30,50 @@ export default function StudentAttendanceTab() {
       }}
       refreshing={history.isRefetching && !history.isFetchingNextPage}
     >
-      <Section title="By class">
-        {summary.data?.map((r) => (
-          <Card key={r.class.id}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <AppText style={{ flex: 1 }}>{r.class.subject.subjectName}</AppText>
-              <AppText variant="subtitle" style={{ color: colors.primary }}>
-                {percent(r.percentage)}
-              </AppText>
-            </Row>
-            <AppText variant="small">
-              Present {r.counts.PRESENT} · Late {r.counts.LATE} · Absent {r.counts.ABSENT} · Excused{' '}
-              {r.counts.EXCUSED}
-            </AppText>
-          </Card>
-        ))}
-      </Section>
+      {summary.data && summary.data.length > 0 ? (
+        <Section title="By class">
+          <ListGroup>
+            {summary.data.map((r) => (
+              <ListRow
+                key={r.class.id}
+                leading={<InitialTile label={r.class.subject.subjectName} />}
+                title={r.class.subject.subjectName}
+                subtitle={`Present ${r.counts.PRESENT} · Late ${r.counts.LATE} · Absent ${r.counts.ABSENT} · Excused ${r.counts.EXCUSED}`}
+                right={
+                  <AppText variant="title" style={{ color: colors.primaryDark }}>
+                    {percent(r.percentage)}
+                  </AppText>
+                }
+              />
+            ))}
+          </ListGroup>
+        </Section>
+      ) : null}
 
       <Section title="History">
         {history.isPending ? (
-          <LoadingState />
+          <SkeletonList />
         ) : history.isError ? (
           <ErrorState message={errorMessage(history.error)} onRetry={() => history.refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState icon="time-outline" title="No attendance records yet" />
+          <EmptyState
+            icon="time-outline"
+            title={copy.empty.studentHistory}
+            message={copy.empty.studentHistoryText}
+          />
         ) : (
           <>
-            {items.map((a) => (
-              <Card key={a.id}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <AppText style={{ flex: 1 }}>{a.session.class.subject.subjectName}</AppText>
-                  <AttendanceBadge status={a.status} />
-                </Row>
-                <AppText variant="small">
-                  {a.session.class.classCode} · {formatDate(a.session.startedAt)}
-                  {a.checkInTime ? ` · ${formatTime(a.checkInTime)}` : ''}
-                </AppText>
-                {a.remarks ? <AppText variant="small">“{a.remarks}”</AppText> : null}
-              </Card>
-            ))}
+            <ListGroup>
+              {items.map((a) => (
+                <ListRow
+                  key={a.id}
+                  title={a.session.class.subject.subjectName}
+                  subtitle={`${formatDate(a.session.startedAt)}${a.checkInTime ? ` · ${formatTime(a.checkInTime)}` : ''}`}
+                  meta={a.remarks ? `“${a.remarks}”` : undefined}
+                  right={<AttendanceBadge status={a.status} />}
+                />
+              ))}
+            </ListGroup>
             {history.hasNextPage ? (
               <Button
                 title="Load more"

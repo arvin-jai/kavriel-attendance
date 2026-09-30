@@ -150,7 +150,12 @@ export default function ClassForm() {
         autoCapitalize="characters"
         error={errors.classCode}
       />
-      <Button title={id ? 'Save changes' : 'Create class'} onPress={onSave} loading={busy} />
+      <Button
+        title={id ? 'Save changes' : 'Create class'}
+        onPress={onSave}
+        loading={busy}
+        size="lg"
+      />
     </Screen>
   );
 }

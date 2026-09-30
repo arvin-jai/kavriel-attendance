@@ -177,7 +177,7 @@ export default function RegisterScreen() {
           attendance for your school. Only your teachers (and you) can see your attendance.
         </AppText>
 
-        <Button title="Create account" onPress={onSubmit} loading={busy} />
+        <Button title="Create account" size="lg" onPress={onSubmit} loading={busy} />
         <Button
           title="I already have an account"
           variant="ghost"

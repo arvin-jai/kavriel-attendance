@@ -1,11 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { View } from 'react-native';
 
 import { classesApi, studentAttendanceApi } from '@/api/endpoints';
 import { AttendanceBadge, QueryView, ScheduleCard } from '@/components/common';
-import { AppText, Card, EmptyState, Row, Screen, Section, Stat } from '@/components/ui';
+import { ListGroup, ListRow, SegmentedBar } from '@/components/patterns';
+import { AppText, Badge, EmptyState, Row, Screen, Section } from '@/components/ui';
 import { formatDate, formatTime, percent } from '@/lib/format';
-import { colors } from '@/theme';
+import { attendanceTone, colors, radius, spacing } from '@/theme';
+
+const ORDER = ['PRESENT', 'LATE', 'ABSENT', 'EXCUSED'] as const;
+const BAR = {
+  PRESENT: colors.presentFg,
+  LATE: colors.warning,
+  ABSENT: colors.absentFg,
+  EXCUSED: colors.excusedFg,
+} as const;
 
 export default function StudentClassDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,24 +44,54 @@ export default function StudentClassDetail() {
       <QueryView query={cls}>
         {(c) => (
           <>
-            <Card>
-              <AppText variant="title">{c.subject.subjectName}</AppText>
-              <AppText variant="muted">
-                {c.subject.subjectCode} · {c.classCode} · {c.sectionName}
-              </AppText>
-              <AppText variant="small">
-                {c.teacher.fullName} · {c.semester.name} {c.semester.academicYear}
-              </AppText>
-            </Card>
-
-            {s ? (
-              <Row>
-                <Stat label="Attendance" value={percent(s.percentage)} tone={colors.primary} />
-                <Stat label="Present" value={s.counts.PRESENT} tone={colors.success} />
-                <Stat label="Late" value={s.counts.LATE} tone={colors.warning} />
-                <Stat label="Absent" value={s.counts.ABSENT} tone={colors.danger} />
-              </Row>
-            ) : null}
+            <View
+              style={{
+                backgroundColor: colors.sky,
+                borderRadius: radius.xl,
+                padding: spacing.xl,
+                gap: spacing.md,
+              }}
+            >
+              <View style={{ gap: 2 }}>
+                <AppText variant="title" style={{ color: colors.onSky }}>
+                  {c.subject.subjectName}
+                </AppText>
+                <AppText style={{ color: colors.onSky }}>
+                  {c.classCode} · {c.sectionName}
+                </AppText>
+                <AppText variant="small" style={{ color: colors.onSky }}>
+                  {c.teacher.fullName} · {c.semester.name} {c.semester.academicYear}
+                </AppText>
+              </View>
+              {s ? (
+                <>
+                  <Row style={{ alignItems: 'baseline', gap: spacing.sm }}>
+                    <AppText style={{ color: colors.onSky, fontSize: 40, fontWeight: '700' }}>
+                      {percent(s.percentage)}
+                    </AppText>
+                    <AppText style={{ color: colors.onSky }}>attendance</AppText>
+                  </Row>
+                  <SegmentedBar
+                    parts={ORDER.map((k) => ({
+                      value: s.counts[k],
+                      color: BAR[k],
+                      label: attendanceTone[k].label.toLowerCase(),
+                    }))}
+                  />
+                  <Row style={{ gap: spacing.xs, flexWrap: 'wrap' }}>
+                    {ORDER.map((k) => (
+                      <Badge
+                        key={k}
+                        label={`${s.counts[k]} ${attendanceTone[k].label}`}
+                        fg={attendanceTone[k].fg}
+                        bg={attendanceTone[k].bg}
+                        icon={attendanceTone[k].icon}
+                      />
+                    ))}
+                  </Row>
+                </>
+              ) : null}
+            </View>
 
             <Section title="Schedule">
               {c.schedules.length === 0 ? (
@@ -70,20 +110,19 @@ export default function StudentClassDetail() {
           isEmpty={(d) => d.items.length === 0}
           empty={<EmptyState title="No sessions yet" />}
         >
-          {(page) =>
-            page.items.map((a) => (
-              <Card key={a.id}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <AppText>{formatDate(a.session.startedAt)}</AppText>
-                  <AttendanceBadge status={a.status} />
-                </Row>
-                {a.checkInTime ? (
-                  <AppText variant="small">Scanned at {formatTime(a.checkInTime)}</AppText>
-                ) : null}
-                {a.remarks ? <AppText variant="small">“{a.remarks}”</AppText> : null}
-              </Card>
-            ))
-          }
+          {(page) => (
+            <ListGroup>
+              {page.items.map((a) => (
+                <ListRow
+                  key={a.id}
+                  title={formatDate(a.session.startedAt)}
+                  subtitle={a.checkInTime ? `Scanned at ${formatTime(a.checkInTime)}` : undefined}
+                  meta={a.remarks ? `“${a.remarks}”` : undefined}
+                  right={<AttendanceBadge status={a.status} />}
+                />
+              ))}
+            </ListGroup>
+          )}
         </QueryView>
       </Section>
     </Screen>

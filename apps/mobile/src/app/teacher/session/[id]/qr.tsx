@@ -1,19 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { errorMessage } from '@/api/errors';
 import { sessionsApi } from '@/api/endpoints';
+import { SegmentedBar, TimerBar } from '@/components/patterns';
 import { SessionQR } from '@/components/SessionQR';
-import { AppText, Banner, Button, Row, Stat } from '@/components/ui';
+import { AppText, Badge, Banner, Button, Row } from '@/components/ui';
 import { useLiveRecords } from '@/features/attendance/useLiveRecords';
 import { useRotatingQr } from '@/features/attendance/useRotatingQr';
 import { useScreenAwake } from '@/features/attendance/useScreenAwake';
+import { copy } from '@/copy';
 import { confirm, notify } from '@/lib/confirm';
 import { formatTime } from '@/lib/format';
-import { colors, spacing } from '@/theme';
+import { colors, font, spacing } from '@/theme';
 
 /** Full-screen classroom display: rotating QR, countdown and live counts. */
 export default function SessionQrScreen() {
@@ -25,6 +27,10 @@ export default function SessionQrScreen() {
   const qr = useRotatingQr(id, isActive);
   const live = useLiveRecords(id, isActive ? 3_000 : false);
   const [clock, setClock] = useState(() => new Date().toISOString());
+  // Bigger QR: hide the counts and draw the code as wide as the phone, for the back row.
+  const [big, setBig] = useState(false);
+  const { width } = useWindowDimensions();
+  const bigSize = Math.min(width - spacing.lg * 2 - spacing.lg * 2, 420);
 
   // The session may be ended or locked from another screen or device: when the QR endpoint
   // or the roster poll says so, reload it so this screen stops showing "Attendance Active".
@@ -59,31 +65,33 @@ export default function SessionQrScreen() {
 
   async function onEnd() {
     const pending = Math.max(0, enrolled - checkedIn);
-    const message =
-      pending > 0
-        ? `${pending} student(s) haven't checked in and will be marked absent. You can correct records afterwards.`
-        : 'Everyone has a record. Students can no longer check in.';
-    if (await confirm('End attendance?', message, 'End attendance', true)) end.mutate();
+    const message = pending > 0 ? copy.qr.endPending(pending) : copy.qr.endAll;
+    if (await confirm(copy.qr.endTitle, message, 'End attendance', true)) end.mutate();
   }
 
   const s = session.data;
+  const attended = (counts?.PRESENT ?? 0) + (counts?.LATE ?? 0);
+  const waiting = Math.max(0, enrolled - checkedIn);
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
-      <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md, alignItems: 'center' }}>
-        <View style={{ alignItems: 'center', gap: 2 }}>
-          <AppText variant="title" style={{ textAlign: 'center' }}>
-            {s?.class.subject.subjectName ?? 'Attendance'}
-          </AppText>
-          <AppText variant="muted">
-            {s ? `${s.class.classCode} · ${s.class.sectionName}` : ''}
-          </AppText>
-          <Row style={{ gap: spacing.sm }}>
-            <AppText
-              style={{ color: isActive ? colors.success : colors.textMuted, fontWeight: '700' }}
-            >
-              {isActive ? '● Attendance Active' : s ? 'Attendance closed' : 'Loading…'}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['top', 'bottom']}>
+      <View style={{ flex: 1, padding: spacing.lg, gap: spacing.md }}>
+        <View style={{ gap: 2 }}>
+          <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <AppText variant="title" style={{ flex: 1 }} numberOfLines={2}>
+              {s?.class.subject.subjectName ?? 'Attendance'}
             </AppText>
             <AppText variant="muted">{formatTime(clock)}</AppText>
+          </Row>
+          <Row style={{ gap: spacing.sm }}>
+            <AppText variant="muted">
+              {s ? `${s.class.classCode} · ${s.class.sectionName}` : ''}
+            </AppText>
+            <Badge
+              label={isActive ? 'Live' : s ? 'Closed' : 'Loading'}
+              fg={isActive ? colors.presentFg : colors.textMuted}
+              bg={isActive ? colors.presentBg : colors.border}
+              icon={isActive ? 'radio-outline' : undefined}
+            />
           </Row>
         </View>
 
@@ -92,21 +100,66 @@ export default function SessionQrScreen() {
           <Banner tone="warning" message={errorMessage(qr.error)} />
         ) : null}
 
-        {isActive ? <SessionQR token={qr.token} /> : null}
+        {big ? (
+          <AppText variant="subtitle" accessibilityLiveRegion="polite">
+            {attended} of {enrolled} in
+          </AppText>
+        ) : (
+          <View style={{ gap: spacing.sm }} accessible accessibilityLiveRegion="polite">
+            <Row style={{ alignItems: 'baseline', gap: spacing.sm }}>
+              <AppText
+                style={{
+                  fontSize: font.time,
+                  lineHeight: font.time + 6,
+                  fontWeight: '700',
+                  color: colors.primaryDark,
+                }}
+              >
+                {attended}
+              </AppText>
+              <AppText variant="subtitle">of {enrolled} in</AppText>
+            </Row>
+            <SegmentedBar
+              parts={[
+                { value: counts?.PRESENT ?? 0, color: colors.presentFg, label: 'present' },
+                { value: counts?.LATE ?? 0, color: colors.warning, label: 'late' },
+                { value: waiting, color: colors.border, label: 'waiting' },
+              ]}
+            />
+            <Row style={{ gap: spacing.xs, flexWrap: 'wrap' }}>
+              <Badge
+                label={`${counts?.LATE ?? 0} Late`}
+                fg={colors.lateFg}
+                bg={colors.lateBg}
+                icon="time-outline"
+              />
+              <Badge
+                label={`${waiting} Waiting`}
+                fg={colors.textMuted}
+                bg={colors.border}
+                icon="ellipsis-horizontal"
+              />
+            </Row>
+          </View>
+        )}
 
         {isActive ? (
-          <AppText variant="subtitle" accessibilityLiveRegion="polite">
-            {qr.token
-              ? `Refreshes in ${String(qr.secondsLeft).padStart(2, '0')} seconds`
-              : 'Getting a fresh code…'}
-          </AppText>
+          <View style={{ alignItems: 'center', gap: spacing.md }}>
+            <SessionQR token={qr.token} size={big ? bigSize : undefined} />
+            <TimerBar
+              secondsLeft={qr.secondsLeft}
+              rotationSeconds={qr.rotationSeconds}
+              active={!!qr.token}
+            />
+            <Button
+              title={big ? copy.qr.smaller : copy.qr.bigger}
+              variant="tonal"
+              icon={big ? 'contract-outline' : 'expand-outline'}
+              style={{ alignSelf: 'stretch' }}
+              onPress={() => setBig((b) => !b)}
+            />
+          </View>
         ) : null}
-
-        <Row style={{ alignSelf: 'stretch' }}>
-          <Stat label="Present" value={counts?.PRESENT ?? 0} tone={colors.success} />
-          <Stat label="Late" value={counts?.LATE ?? 0} tone={colors.warning} />
-          <Stat label="Enrolled" value={enrolled} />
-        </Row>
 
         <View style={{ flex: 1 }} />
         <Row style={{ alignSelf: 'stretch' }}>
@@ -114,13 +167,15 @@ export default function SessionQrScreen() {
             title="View list"
             variant="secondary"
             icon="list-outline"
+            size="lg"
             style={{ flex: 1 }}
             onPress={() => router.push({ pathname: '/teacher/session/[id]', params: { id } })}
           />
           {isActive ? (
             <Button
-              title="End Attendance"
+              title="End attendance"
               variant="danger"
+              size="lg"
               style={{ flex: 1 }}
               loading={end.isPending}
               onPress={onEnd}
@@ -129,6 +184,7 @@ export default function SessionQrScreen() {
             <Button
               title="Close"
               variant="secondary"
+              size="lg"
               style={{ flex: 1 }}
               onPress={() => router.back()}
             />

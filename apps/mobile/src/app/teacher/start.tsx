@@ -99,6 +99,7 @@ export default function StartAttendance() {
           <Button
             title="Start attendance"
             icon="play"
+            size="lg"
             disabled={!classId}
             loading={start.isPending}
             onPress={() => start.mutate()}

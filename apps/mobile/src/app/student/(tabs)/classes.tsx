@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { classesApi } from '@/api/endpoints';
 import { useStudent } from '@/auth/AuthProvider';
 import { QueryView } from '@/components/common';
-import { AppText, Card, EmptyState, Screen } from '@/components/ui';
+import { InitialTile, ListGroup, ListRow } from '@/components/patterns';
+import { EmptyState, Screen } from '@/components/ui';
+import { copy } from '@/copy';
 
 export default function MyClasses() {
   const student = useStudent();
@@ -17,27 +19,27 @@ export default function MyClasses() {
         empty={
           <EmptyState
             icon="people-outline"
-            title="You're not in any class yet"
-            message={`Ask your teacher to enroll you with your student number ${student.profile.studentNumber}.`}
+            title={copy.empty.studentClasses}
+            message={copy.empty.studentClassesText(student.profile.studentNumber)}
           />
         }
       >
-        {(list) =>
-          list.map((c) => (
-            <Card
-              key={c.id}
-              onPress={() => router.push({ pathname: '/student/class/[id]', params: { id: c.id } })}
-            >
-              <AppText variant="subtitle">{c.subject.subjectName}</AppText>
-              <AppText variant="small">
-                {c.classCode} · {c.sectionName} · {c.teacher.fullName}
-              </AppText>
-              <AppText variant="small">
-                {c.semester.name} {c.semester.academicYear}
-              </AppText>
-            </Card>
-          ))
-        }
+        {(list) => (
+          <ListGroup>
+            {list.map((c) => (
+              <ListRow
+                key={c.id}
+                leading={<InitialTile label={c.subject.subjectName} />}
+                title={c.subject.subjectName}
+                subtitle={`${c.teacher.fullName} · ${c.classCode}`}
+                meta={`${c.sectionName} · ${c.semester.name} ${c.semester.academicYear}`}
+                onPress={() =>
+                  router.push({ pathname: '/student/class/[id]', params: { id: c.id } })
+                }
+              />
+            ))}
+          </ListGroup>
+        )}
       </QueryView>
     </Screen>
   );
