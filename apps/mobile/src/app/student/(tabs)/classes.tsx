@@ -32,7 +32,7 @@ export default function MyClasses() {
                 leading={<InitialTile label={c.subject.subjectName} />}
                 title={c.subject.subjectName}
                 subtitle={`${c.teacher.fullName} · ${c.classCode}`}
-                meta={`${c.sectionName} · ${c.semester.name} ${c.semester.academicYear}`}
+                meta={`${c.sectionName} · ${c.semester.name}`}
                 onPress={() =>
                   router.push({ pathname: '/student/class/[id]', params: { id: c.id } })
                 }

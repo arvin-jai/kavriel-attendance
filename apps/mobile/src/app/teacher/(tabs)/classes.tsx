@@ -84,7 +84,7 @@ export default function ClassesTab() {
                   leading={<InitialTile label={c.subject.subjectName} />}
                   title={c.subject.subjectName}
                   subtitle={`${c.classCode} · ${c.sectionName}`}
-                  meta={`${c.enrolledCount} students · ${c.semester.name} ${c.semester.academicYear}`}
+                  meta={`${c.enrolledCount} students · ${c.semester.name}`}
                   right={c.status === 'ARCHIVED' ? ARCHIVED : undefined}
                   onPress={() =>
                     router.push({ pathname: '/teacher/class/[id]', params: { id: c.id } })

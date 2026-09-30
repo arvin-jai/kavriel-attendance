@@ -916,7 +916,7 @@ ALTER TABLE "AttendanceSession" ADD CONSTRAINT "AttendanceSession_qr_range" CHEC
 ALTER TABLE "Subject" ADD CONSTRAINT "Subject_units_pos" CHECK ("units" IS NULL OR "units" > 0);
 ```
 
-**Seed (`prisma/seed.ts`, idempotent upserts):** Roles (TEACHER, STUDENT), YearLevels 1st–4th Year, the current AcademicYear + 1st/2nd/3rd Semester. The dev-only seed adds a demo teacher and students when `NODE_ENV !== 'production'`.
+**Seed (`prisma/seed.ts`, idempotent upserts):** Roles (TEACHER, STUDENT), YearLevels 1st–4th Year, the current AcademicYear + 1st/2nd/3rd Term. The dev-only seed adds a demo teacher and students when `NODE_ENV !== 'production'`.
 
 ---
 

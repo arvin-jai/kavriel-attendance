@@ -60,7 +60,7 @@ export default function StudentClassDetail() {
                   {c.classCode} · {c.sectionName}
                 </AppText>
                 <AppText variant="small" style={{ color: colors.onSky }}>
-                  {c.teacher.fullName} · {c.semester.name} {c.semester.academicYear}
+                  {c.teacher.fullName} · {c.semester.name}
                 </AppText>
               </View>
               {s ? (

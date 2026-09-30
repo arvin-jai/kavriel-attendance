@@ -68,7 +68,7 @@ export default function ClassDetail() {
                     {c.classCode} · {c.sectionName}
                   </AppText>
                   <AppText variant="small" style={{ color: colors.onSky }}>
-                    {c.semester.name} {c.semester.academicYear} · {c.enrolledCount} students
+                    {c.semester.name} · {c.enrolledCount} students
                   </AppText>
                 </View>
                 {c.status === 'ARCHIVED' ? (

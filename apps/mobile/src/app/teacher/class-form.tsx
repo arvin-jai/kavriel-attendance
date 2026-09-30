@@ -97,7 +97,7 @@ export default function ClassForm() {
   )
     return <LoadingState />;
 
-  // Offer only the 1st/2nd/3rd semester of one academic year: the class's own year when
+  // Offer only the 1st/2nd/3rd term of one academic year: the class's own year when
   // editing, otherwise the current one.
   const yearId = id
     ? semesters.data?.find((s) => s.id === existing.data?.semester.id)?.academicYear.id
@@ -148,9 +148,9 @@ export default function ClassForm() {
         />
       )}
 
-      <AppText variant="label">Semester</AppText>
+      <AppText variant="label">Term</AppText>
       <Chips options={semesterOptions} value={semesterId} onChange={setSemesterId} />
-      {errors.semesterId ? <Banner tone="danger" message="Choose a semester" /> : null}
+      {errors.semesterId ? <Banner tone="danger" message="Choose a term" /> : null}
 
       <TextField
         label="Section name"

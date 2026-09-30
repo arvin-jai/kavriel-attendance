@@ -98,7 +98,7 @@ export default function SubjectDetail() {
                         leading={<InitialTile label={c.sectionName} />}
                         title={c.sectionName}
                         subtitle={c.classCode}
-                        meta={`${c.semester.name} ${c.semester.academicYear} · ${c.enrolledCount} students`}
+                        meta={`${c.semester.name} · ${c.enrolledCount} students`}
                         onPress={() =>
                           router.push({ pathname: '/teacher/class/[id]', params: { id: c.id } })
                         }

@@ -52,7 +52,7 @@ async function assertCodeFree(
 
 async function assertSemester(semesterId: number) {
   if (!(await prisma.semester.findUnique({ where: { id: semesterId } })))
-    throw notFound('Semester');
+    throw notFound('Term');
 }
 
 export async function list(

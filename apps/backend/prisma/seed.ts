@@ -41,9 +41,9 @@ async function seedReference() {
       start: '2025-08-01',
       end: '2026-07-31',
       semesters: [
-        ['1st Semester', '2025-08-01', '2025-12-20'],
-        ['2nd Semester', '2026-01-05', '2026-05-31'],
-        ['3rd Semester', '2026-06-01', '2026-07-31'],
+        ['1st Term', '2025-08-01', '2025-12-20'],
+        ['2nd Term', '2026-01-05', '2026-05-31'],
+        ['3rd Term', '2026-06-01', '2026-07-31'],
       ],
     },
     {
@@ -51,9 +51,9 @@ async function seedReference() {
       start: '2026-08-01',
       end: '2027-07-31',
       semesters: [
-        ['1st Semester', '2026-08-01', '2026-12-20'],
-        ['2nd Semester', '2027-01-04', '2027-05-31'],
-        ['3rd Semester', '2027-06-01', '2027-07-31'],
+        ['1st Term', '2026-08-01', '2026-12-20'],
+        ['2nd Term', '2027-01-04', '2027-05-31'],
+        ['3rd Term', '2027-06-01', '2027-07-31'],
       ],
     },
   ] as const;
@@ -131,7 +131,7 @@ async function seedDemo() {
 
   const ay = await prisma.academicYear.findUniqueOrThrow({ where: { name: '2026-2027' } });
   const semester = await prisma.semester.findUniqueOrThrow({
-    where: { academicYearId_name: { academicYearId: ay.id, name: '1st Semester' } },
+    where: { academicYearId_name: { academicYearId: ay.id, name: '1st Term' } },
   });
 
   const cls = await prisma.classSection.upsert({
