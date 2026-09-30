@@ -21,6 +21,10 @@ import {
   tokens,
 } from '@/api/client';
 import { authApi } from '@/api/endpoints';
+import {
+  hasCompletedOnboarding,
+  markOnboardingCompleted,
+} from '@/features/onboarding/onboardingStore';
 import { deviceInstallId } from '@/lib/deviceId';
 
 type Status = 'loading' | 'signedOut' | 'signedIn';
@@ -30,11 +34,15 @@ interface AuthContextValue {
   user: UserDto | null;
   /** Set when the session ended on its own (expired, disabled), for a one-time notice. */
   notice: string | null;
+  /** True until the user finishes (or skips) the first-run walkthrough. */
+  onboardingPending: boolean;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: UserDto) => void;
   clearNotice: () => void;
+  completeOnboarding: () => void;
+  replayOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,12 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [user, setUserState] = useState<UserDto | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [onboardingPending, setOnboardingPending] = useState(false);
 
   const signOutLocally = useCallback(
     async (message?: string) => {
       await tokens.clear();
       queryClient.clear();
       setUserState(null);
+      setOnboardingPending(false);
       setStatus('signedOut');
       if (message) setNotice(message);
     },
@@ -71,7 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         if (await refreshSession()) {
           const me = await authApi.me();
+          const seen = await hasCompletedOnboarding(me.id);
           if (!cancelled) {
+            setOnboardingPending(!seen);
             setUserState(me);
             setStatus('signedIn');
           }
@@ -92,9 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       user,
       notice,
+      onboardingPending,
       async login(input) {
         const result = await authApi.login(input);
         await tokens.set(result);
+        // An existing account on a fresh install has no flag yet, so it sees the walkthrough too.
+        setOnboardingPending(!(await hasCompletedOnboarding(result.user.id)));
         setUserState(result.user);
         setNotice(null);
         setStatus('signedIn');
@@ -102,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async register(input) {
         const result = await authApi.register(input);
         await tokens.set(result);
+        setOnboardingPending(true); // brand-new account: always show the walkthrough
         setUserState(result.user);
         setNotice(null);
         setStatus('signedIn');
@@ -117,8 +133,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       setUser: setUserState,
       clearNotice: () => setNotice(null),
+      completeOnboarding() {
+        setOnboardingPending(false);
+        if (user) void markOnboardingCompleted(user.id);
+      },
+      replayOnboarding: () => setOnboardingPending(true),
     }),
-    [status, user, notice, signOutLocally],
+    [status, user, notice, onboardingPending, signOutLocally],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

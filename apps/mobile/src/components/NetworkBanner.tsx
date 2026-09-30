@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '@/theme';
 
+import { copy } from '@/copy';
+
 import { AppText } from './ui';
 
 // Let TanStack Query pause/resume requests with connectivity.
@@ -31,7 +33,7 @@ export function NetworkBanner() {
       }}
     >
       <AppText style={{ color: colors.white, textAlign: 'center', fontWeight: '600' }}>
-        You're offline. Attendance can't be recorded until you reconnect.
+        {copy.offline.banner}
       </AppText>
     </View>
   );

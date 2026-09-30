@@ -1,22 +1,23 @@
 import { Tabs } from 'expo-router';
 
+import { FloatingTabBar } from '@/components/FloatingTabBar';
+import { LiveSessionPill } from '@/components/LiveSessionPill';
 import { HeaderProfileButton } from '@/components/HeaderProfileButton';
+import { tabBarOptions } from '@/components/navOptions';
 import { tabIcon } from '@/components/tabIcon';
-import { colors } from '@/theme';
 
 export default function TeacherTabs() {
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} top={<LiveSessionPill />} />}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        headerTitleStyle: { color: colors.text },
+        ...tabBarOptions,
         headerRight: () => <HeaderProfileButton href="/teacher/profile" />,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('home-outline') }} />
       <Tabs.Screen
-        name="subjects"
-        options={{ title: 'Subjects', tabBarIcon: tabIcon('book-outline') }}
+        name="index"
+        options={{ title: 'Dashboard', tabBarLabel: 'Home', tabBarIcon: tabIcon('home-outline') }}
       />
       <Tabs.Screen
         name="classes"
@@ -28,7 +29,7 @@ export default function TeacherTabs() {
       />
       <Tabs.Screen
         name="attendance"
-        options={{ title: 'Attendance', tabBarIcon: tabIcon('checkmark-done-outline') }}
+        options={{ title: 'Records', tabBarIcon: tabIcon('list-outline') }}
       />
     </Tabs>
   );

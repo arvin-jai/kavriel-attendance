@@ -1,12 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { View } from 'react-native';
 
 import { errorMessage } from '@/api/errors';
 import { classesApi, sessionsApi } from '@/api/endpoints';
 import { QueryView, ScheduleCard, SessionCard } from '@/components/common';
-import { AppText, Badge, Button, Card, EmptyState, Row, Screen, Section } from '@/components/ui';
+import { ActionRow, ListGroup, ListRow } from '@/components/patterns';
+import { AppText, Badge, Button, EmptyState, Row, Screen, Section } from '@/components/ui';
 import { confirm, notify } from '@/lib/confirm';
-import { colors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 export default function ClassDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,35 +51,52 @@ export default function ClassDetail() {
       <QueryView query={cls}>
         {(c) => (
           <>
-            <Card>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <AppText variant="title">{c.classCode}</AppText>
+            <View
+              style={{
+                backgroundColor: colors.sky,
+                borderRadius: radius.xl,
+                padding: spacing.xl,
+                gap: spacing.md,
+              }}
+            >
+              <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <AppText variant="title" style={{ color: colors.onSky }}>
+                    {c.subject.subjectName}
+                  </AppText>
+                  <AppText style={{ color: colors.onSky }}>
+                    {c.classCode} · {c.sectionName}
+                  </AppText>
+                  <AppText variant="small" style={{ color: colors.onSky }}>
+                    {c.semester.name} {c.semester.academicYear} · {c.enrolledCount} students
+                  </AppText>
+                </View>
                 {c.status === 'ARCHIVED' ? (
-                  <Badge label="Archived" fg={colors.textMuted} bg={colors.border} />
+                  <Badge label="Archived" fg={colors.textMuted} bg={colors.surface} />
                 ) : null}
               </Row>
-              <AppText variant="subtitle">{c.subject.subjectName}</AppText>
-              <AppText variant="small">
-                {c.sectionName} · {c.semester.name} {c.semester.academicYear}
-              </AppText>
-            </Card>
+              {c.status === 'ACTIVE' ? (
+                <Button
+                  title="Start attendance"
+                  icon="play"
+                  size="lg"
+                  onPress={() =>
+                    router.push({ pathname: '/teacher/start', params: { classId: id } })
+                  }
+                />
+              ) : null}
+            </View>
 
-            {c.status === 'ACTIVE' ? (
-              <Button
-                title="Start attendance"
-                icon="qr-code-outline"
-                onPress={() => router.push({ pathname: '/teacher/start', params: { classId: id } })}
+            <ListGroup>
+              <ListRow
+                leading={<Ionicons name="people-outline" size={22} color={colors.primaryDark} />}
+                title="Students"
+                right={<AppText variant="muted">{c.enrolledCount}</AppText>}
+                onPress={() =>
+                  router.push({ pathname: '/teacher/class/[id]/students', params: { id } })
+                }
               />
-            ) : null}
-
-            <Button
-              title={`Students (${c.enrolledCount})`}
-              variant="secondary"
-              icon="people-outline"
-              onPress={() =>
-                router.push({ pathname: '/teacher/class/[id]/students', params: { id } })
-              }
-            />
+            </ListGroup>
 
             <Section
               title="Schedule"
@@ -133,54 +153,58 @@ export default function ClassDetail() {
               </QueryView>
             </Section>
 
-            <Button
-              title="Edit class"
-              variant="secondary"
-              icon="create-outline"
-              onPress={() => router.push({ pathname: '/teacher/class-form', params: { id } })}
-            />
-            {c.status === 'ACTIVE' ? (
-              <Button
-                title="Archive class"
-                variant="secondary"
-                loading={setStatus.isPending}
-                onPress={async () => {
-                  if (
-                    await confirm(
-                      'Archive class?',
-                      'Attendance history stays in reports. No new sessions or enrollments.',
-                      'Archive',
-                    )
-                  ) {
-                    setStatus.mutate('ARCHIVED');
-                  }
-                }}
-              />
-            ) : (
-              <Button
-                title="Restore class"
-                variant="secondary"
-                loading={setStatus.isPending}
-                onPress={() => setStatus.mutate('ACTIVE')}
-              />
-            )}
-            <Button
-              title="Delete class"
-              variant="danger"
-              loading={remove.isPending}
-              onPress={async () => {
-                if (
-                  await confirm(
-                    'Delete class?',
-                    'Only classes with no students, schedules or sessions can be deleted.',
-                    'Delete',
-                    true,
-                  )
-                ) {
-                  remove.mutate();
-                }
-              }}
-            />
+            <Section title="Manage">
+              <ListGroup>
+                <ActionRow
+                  icon="create-outline"
+                  title="Edit class"
+                  onPress={() => router.push({ pathname: '/teacher/class-form', params: { id } })}
+                />
+                {c.status === 'ACTIVE' ? (
+                  <ActionRow
+                    icon="archive-outline"
+                    title="Archive class"
+                    busy={setStatus.isPending}
+                    onPress={async () => {
+                      if (
+                        await confirm(
+                          'Archive class?',
+                          'Attendance history stays in reports. No new sessions or enrollments.',
+                          'Archive',
+                        )
+                      ) {
+                        setStatus.mutate('ARCHIVED');
+                      }
+                    }}
+                  />
+                ) : (
+                  <ActionRow
+                    icon="arrow-undo-outline"
+                    title="Restore class"
+                    busy={setStatus.isPending}
+                    onPress={() => setStatus.mutate('ACTIVE')}
+                  />
+                )}
+                <ActionRow
+                  icon="trash-outline"
+                  title="Delete class"
+                  tone="danger"
+                  busy={remove.isPending}
+                  onPress={async () => {
+                    if (
+                      await confirm(
+                        'Delete class?',
+                        'Only classes with no students, schedules or sessions can be deleted.',
+                        'Delete',
+                        true,
+                      )
+                    ) {
+                      remove.mutate();
+                    }
+                  }}
+                />
+              </ListGroup>
+            </Section>
           </>
         )}
       </QueryView>

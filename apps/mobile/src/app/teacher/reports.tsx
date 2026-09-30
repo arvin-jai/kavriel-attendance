@@ -6,11 +6,11 @@ import { useState } from 'react';
 import { errorMessage } from '@/api/errors';
 import { classesApi, reportsApi } from '@/api/endpoints';
 import { QueryView } from '@/components/common';
+import { InitialTile, ListGroup, ListRow } from '@/components/patterns';
 import {
   AppText,
   Banner,
   Button,
-  Card,
   Chips,
   EmptyState,
   Row,
@@ -109,7 +109,8 @@ export default function ReportsScreen() {
       <Button
         title="Export CSV"
         icon="download-outline"
-        variant="secondary"
+        variant="tonal"
+        size="lg"
         loading={exportCsv.isPending}
         disabled={!!dateError}
         onPress={() => exportCsv.mutate()}
@@ -121,36 +122,38 @@ export default function ReportsScreen() {
         isEmpty={(d) => d.rows.length === 0}
         empty={<EmptyState icon="bar-chart-outline" title="No attendance matches these filters" />}
       >
-        {(data) =>
-          data.groupBy === 'student'
-            ? data.rows.map((r) => (
-                <Card key={r.student.id}>
-                  <Row style={{ justifyContent: 'space-between' }}>
-                    <AppText variant="subtitle" style={{ flex: 1 }}>
-                      {r.student.lastName}, {r.student.firstName}
-                    </AppText>
-                    <AppText variant="subtitle" style={{ color: colors.primary }}>
-                      {percent(r.percentage)}
-                    </AppText>
-                  </Row>
-                  <AppText variant="small">
-                    {r.student.studentNumber} · P {r.counts.PRESENT} · L {r.counts.LATE} · A{' '}
-                    {r.counts.ABSENT} · E {r.counts.EXCUSED}
-                  </AppText>
-                </Card>
-              ))
-            : data.rows.map((r) => (
-                <Card key={r.session.id}>
-                  <AppText variant="subtitle">
-                    {r.class.classCode} · {formatDateTime(r.session.startedAt)}
-                  </AppText>
-                  <AppText variant="small">
-                    Present {r.counts.PRESENT} · Late {r.counts.LATE} · Absent {r.counts.ABSENT} ·
-                    Excused {r.counts.EXCUSED} · of {r.enrolledCount}
-                  </AppText>
-                </Card>
-              ))
-        }
+        {(data) => (
+          <ListGroup>
+            {data.groupBy === 'student'
+              ? data.rows.map((r) => (
+                  <ListRow
+                    key={r.student.id}
+                    leading={
+                      <InitialTile
+                        label={`${r.student.firstName} ${r.student.lastName}`}
+                        size={40}
+                      />
+                    }
+                    title={`${r.student.lastName}, ${r.student.firstName}`}
+                    subtitle={`${r.student.studentNumber}`}
+                    meta={`Present ${r.counts.PRESENT} · Late ${r.counts.LATE} · Absent ${r.counts.ABSENT} · Excused ${r.counts.EXCUSED}`}
+                    right={
+                      <AppText variant="title" style={{ color: colors.primaryDark }}>
+                        {percent(r.percentage)}
+                      </AppText>
+                    }
+                  />
+                ))
+              : data.rows.map((r) => (
+                  <ListRow
+                    key={r.session.id}
+                    title={`${r.class.classCode} · ${formatDateTime(r.session.startedAt)}`}
+                    subtitle={`Present ${r.counts.PRESENT} · Late ${r.counts.LATE} · Absent ${r.counts.ABSENT} · Excused ${r.counts.EXCUSED}`}
+                    meta={`of ${r.enrolledCount} enrolled`}
+                  />
+                ))}
+          </ListGroup>
+        )}
       </QueryView>
     </Screen>
   );
