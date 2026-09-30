@@ -1,6 +1,6 @@
 /** Small UI kit: consistent spacing, 44px+ touch targets, text + colour for every status. */
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -19,6 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, font, fontFamily, radius, shadow, spacing } from '@/theme';
+
+import { BottomSheet } from './BottomSheet';
 
 type Variant = 'hero' | 'title' | 'subtitle' | 'body' | 'muted' | 'small' | 'label';
 
@@ -202,6 +204,76 @@ export function TextField({
           </AppText>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** Dropdown field: shows the chosen option and opens a bottom sheet listing every option. */
+export function Select<T extends string>({
+  label,
+  placeholder = 'Select…',
+  options,
+  value,
+  onChange,
+  error,
+}: {
+  label: string;
+  placeholder?: string;
+  options: { value: T; label: string }[];
+  value: T | undefined;
+  onChange: (value: T) => void;
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <AppText variant="label">{label}</AppText>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${selected?.label ?? 'none selected'}`}
+        style={[styles.input, styles.select, error ? styles.inputError : null]}
+      >
+        <AppText
+          numberOfLines={1}
+          style={{ flex: 1, color: selected ? colors.text : colors.textMuted }}
+        >
+          {selected?.label ?? placeholder}
+        </AppText>
+        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+      </Pressable>
+      {error ? (
+        <View style={styles.errorRow}>
+          <Ionicons name="alert-circle" size={16} color={colors.absentFg} />
+          <AppText style={{ color: colors.absentFg, fontSize: font.label, flex: 1 }}>
+            {error}
+          </AppText>
+        </View>
+      ) : null}
+      <BottomSheet visible={open} onClose={() => setOpen(false)}>
+        <AppText variant="subtitle">{label}</AppText>
+        <View>
+          {options.map((o) => {
+            const active = o.value === value;
+            return (
+              <Pressable
+                key={o.value}
+                onPress={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={[styles.selectOption, active && { backgroundColor: colors.primarySoft }]}
+              >
+                <AppText style={{ flex: 1, fontWeight: active ? '700' : '400' }}>{o.label}</AppText>
+                {active ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </View>
   );
 }
@@ -573,6 +645,15 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: colors.absentFg, borderWidth: 2 },
   errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  select: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  selectOption: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
   chip: {
     minHeight: 44,
     paddingHorizontal: spacing.md,

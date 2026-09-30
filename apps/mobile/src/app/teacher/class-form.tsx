@@ -13,6 +13,7 @@ import {
   EmptyState,
   LoadingState,
   Screen,
+  Select,
   TextField,
 } from '@/components/ui';
 import { validate } from '@/lib/validation';
@@ -89,8 +90,22 @@ export default function ClassForm() {
     }
   }
 
-  if ((id && existing.isPending) || subjects.isPending || semesters.isPending)
+  if (
+    (id ? existing.isPending : current.isPending) ||
+    subjects.isPending ||
+    semesters.isPending
+  )
     return <LoadingState />;
+
+  // Offer only the 1st/2nd/3rd semester of one academic year: the class's own year when
+  // editing, otherwise the current one.
+  const yearId = id
+    ? semesters.data?.find((s) => s.id === existing.data?.semester.id)?.academicYear.id
+    : current.data?.academicYear.id;
+  const semesterOptions = (semesters.data ?? [])
+    .filter((s) => s.academicYear.id === yearId)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+    .map((s) => ({ value: String(s.id), label: s.name }));
 
   if (!id && subjects.data?.length === 0) {
     return (
@@ -112,27 +127,29 @@ export default function ClassForm() {
       <Stack.Screen options={{ title: id ? 'Edit class' : 'New class' }} />
       {formError ? <Banner tone="danger" message={formError} /> : null}
 
-      <AppText variant="label">Subject</AppText>
       {id ? (
-        <AppText>{existing.data?.subject.subjectName}</AppText>
+        <>
+          <AppText variant="label">Subject</AppText>
+          <AppText>
+            {existing.data?.subject.subjectCode} · {existing.data?.subject.subjectName}
+          </AppText>
+        </>
       ) : (
-        <Chips
-          options={(subjects.data ?? []).map((s) => ({ value: s.id, label: s.subjectCode }))}
+        <Select
+          label="Subject"
+          placeholder="Choose a subject"
+          options={(subjects.data ?? []).map((s) => ({
+            value: s.id,
+            label: `${s.subjectCode} · ${s.subjectName}`,
+          }))}
           value={subjectId}
           onChange={setSubjectId}
+          error={errors.subjectId ? 'Choose a subject' : undefined}
         />
       )}
-      {errors.subjectId ? <Banner tone="danger" message="Choose a subject" /> : null}
 
       <AppText variant="label">Semester</AppText>
-      <Chips
-        options={(semesters.data ?? []).map((s) => ({
-          value: String(s.id),
-          label: `${s.name} ${s.academicYear.name}`,
-        }))}
-        value={semesterId}
-        onChange={setSemesterId}
-      />
+      <Chips options={semesterOptions} value={semesterId} onChange={setSemesterId} />
       {errors.semesterId ? <Banner tone="danger" message="Choose a semester" /> : null}
 
       <TextField

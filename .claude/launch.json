@@ -4,14 +4,36 @@
     {
       "name": "backend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "@kavriel/backend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@kavriel/backend"
+      ],
       "port": 4000
     },
     {
       "name": "mobile-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web", "-w", "@kavriel/mobile", "--", "--port", "8081"],
+      "runtimeArgs": [
+        "run",
+        "web",
+        "-w",
+        "@kavriel/mobile",
+        "--",
+        "--port",
+        "8081"
+      ],
       "port": 8081
+    },
+    {
+      "name": "mobile-web-local",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set EXPO_PUBLIC_API_URL=http://localhost:4000/api/v1&& npm run web -w @kavriel/mobile -- --port 8082"
+      ],
+      "port": 8082
     }
   ]
 }
